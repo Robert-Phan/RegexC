@@ -1,0 +1,5 @@
+expression -> alt
+alt -> concat ('|' concat)?
+concat -> quant (quant)?
+quant -> primary ('?' | '+' | '*' | RANGE)?
+primary -> '(' expression ')' | RUN | ESCAPE | SET | NEGSET | '^' | '$'

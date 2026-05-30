@@ -52,10 +52,9 @@ static bool match(Scanner *sc, char *cs)
     return false;
 }
 
-static char *get_value(Scanner *sc)
-{
-    int len = sc->current - sc->start;
-    char *suf = sc->source + sc->start;
+static char *get_value_custom(Scanner *sc, int start, int end) {
+    int len = end - start;
+    char *suf = sc->source + start;
 
     char *value = malloc(len + 1);
     memcpy(value, suf, len);
@@ -64,16 +63,38 @@ static char *get_value(Scanner *sc)
     return value;
 }
 
-static void add_token(Scanner *sc, TokenType type)
-{
-    char *value = get_value(sc);
+static void add_token_custom(Scanner *sc, TokenType type, int start, int end) {
+    char *value = get_value_custom(sc, start, end);
     Token token = new_token(type, value);
     list_add(sc->list, token);
+}
+
+static void add_token(Scanner *sc, TokenType type)
+{
+    add_token_custom(sc, type, sc->start, sc->current);
 }
 
 static bool is_digit(char c)
 {
     return c >= '0' && c <= '9';
+}
+
+static bool is_escape(char c) {
+    return strchr("wWdDsSbBtnr", c) != NULL;
+}
+
+static void scan_escape(Scanner *sc)
+{
+    TokenType type = is_escape(peek(sc)) ? ESCAPE : RUN;
+
+    advance(sc);
+
+    add_token_custom(sc, type, sc->start+1, sc->current);
+}
+
+static bool is_quant(char c) {
+    char *quant = "{}+?*";
+    return strchr(quant, c) != NULL;
 }
 
 static bool is_base(char c)
@@ -84,8 +105,12 @@ static bool is_base(char c)
 
 static void scan_run(Scanner *sc)
 {
-    while (is_base(peek(sc)))
+    while (is_base(peek(sc))) {
+        if (is_quant(peek_next(sc)))
+            break;
+        
         advance(sc);
+    }
 
     add_token(sc, RUN);
 }
@@ -110,7 +135,7 @@ static void scan_set(Scanner *sc)
 
     advance(sc);
 
-    add_token(sc, is_negset ? NEGSET : SET);
+    add_token_custom(sc, is_negset ? NEGSET : SET, sc->start+1, sc->current-1);
 }
 
 static void scan_range(Scanner *sc)
@@ -132,7 +157,7 @@ static void scan_range(Scanner *sc)
         return;
     }
 
-    add_token(sc, RANGE);
+    add_token_custom(sc, RANGE, sc->start+1, sc->current-1);
 }
 
 static void scan_token(Scanner *sc)
@@ -142,10 +167,7 @@ static void scan_token(Scanner *sc)
     switch (c)
     {
     case '\\':
-        if (match(sc, "wWdDsSbBtnr"))
-        {
-            add_token(sc, ESCAPE);
-        }
+        scan_escape(sc);
         break;
 
     case '^':
