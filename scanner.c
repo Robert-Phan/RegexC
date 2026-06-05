@@ -143,7 +143,7 @@ static void scan_range(Scanner *sc)
     while (is_digit(peek(sc)))
         advance(sc);
 
-    if (peek(sc) == ',' && is_digit(peek_next(sc)))
+    if (peek(sc) == ',')
     {
         advance(sc);
 
@@ -157,6 +157,8 @@ static void scan_range(Scanner *sc)
         return;
     }
 
+    advance(sc);
+
     add_token_custom(sc, RANGE, sc->start+1, sc->current-1);
 }
 
@@ -169,6 +171,9 @@ static void scan_token(Scanner *sc)
     case '\\':
         scan_escape(sc);
         break;
+    case '.':
+        add_token(sc, DOT);
+        break;
 
     case '^':
         add_token(sc, CARET);
@@ -178,10 +183,10 @@ static void scan_token(Scanner *sc)
         break;
 
     case '(':
-        add_token(sc, RIGHT_PAREN);
+        add_token(sc, LEFT_PAREN);
         break;
     case ')':
-        add_token(sc, LEFT_PAREN);
+        add_token(sc, RIGHT_PAREN);
         break;
     case '|':
         add_token(sc, PIPE);

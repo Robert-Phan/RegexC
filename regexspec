@@ -10,6 +10,7 @@ Character Classes:
 \t \n \r
 [abc] [^abc]
 [a-c] [^a-c]
+.
 
 Quantifiers:
 
