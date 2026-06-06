@@ -34,13 +34,13 @@ static bool is_at_end(Parser *pr) {
 
 static Token peek(Parser *pr) {
     Token token = (Token) {};
-    list_get(pr->tokens, pr->current, &token);
+    TokenList_get(pr->tokens, pr->current, &token);
     return token;
 }
 
 static Token previous(Parser *pr) {
     Token token = (Token) {};
-    list_get(pr->tokens, pr->current-1, &token);
+    TokenList_get(pr->tokens, pr->current-1, &token);
     return token;
 }
 

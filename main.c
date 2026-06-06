@@ -1,4 +1,4 @@
-#include "parser.h"
+#include "regex.h"
 #include <stdio.h>
 
 int main(int argc, char const *argv[])
@@ -9,8 +9,8 @@ int main(int argc, char const *argv[])
 
     Token test;
     for (int i = 0; i < list->n; i++) {
-        list_get(list, i, &test);
-        printf("%x %s\n", test.type, test.value);
+        TokenList_get(list, i, &test);
+        printf("%i %s\n", test.type, test.value);
     }
 
     return 0;

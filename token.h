@@ -1,4 +1,5 @@
 #include <stdlib.h>
+#include "list.h"
 
 typedef enum {
     ESCAPE,
@@ -25,16 +26,4 @@ typedef struct {
 
 Token new_token(TokenType type, char *value);
 
-typedef struct {
-    int a_size;
-    int n;
-    Token *array;
-} TokenList;
-
-TokenList *new_list();
-
-int list_get(TokenList *list, int i, Token *token);
-
-void list_add(TokenList *list, Token token);
-
-void free_list(TokenList *list);
+LIST_DECLARE(Token, TokenList);

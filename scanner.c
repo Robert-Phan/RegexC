@@ -66,7 +66,7 @@ static char *get_value_custom(Scanner *sc, int start, int end) {
 static void add_token_custom(Scanner *sc, TokenType type, int start, int end) {
     char *value = get_value_custom(sc, start, end);
     Token token = new_token(type, value);
-    list_add(sc->list, token);
+    TokenList_add(sc->list, token);
 }
 
 static void add_token(Scanner *sc, TokenType type)
@@ -217,7 +217,7 @@ static void scan_token(Scanner *sc)
 
 TokenList *scan(char *source)
 {
-    TokenList *list = new_list();
+    TokenList *list = new_TokenList();
     Scanner scanner = {0, 0, source, list};
 
     while (!is_at_end(&scanner))
