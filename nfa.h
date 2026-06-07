@@ -1,26 +1,41 @@
 #include "parser.h"
-#include <stdlib.h>
 #include <stdbool.h>
 
 typedef struct Edge Edge;
 
 LIST_DECLARE(Edge, EdgeList);
 
-typedef struct {
-    EdgeList *transitions;
-} State;
+typedef int State;
 
-typedef bool (*MatchFunction) (void);
+State new_state();
+
+typedef struct {
+    char *source;
+    int pos;
+} MatchSrc;
+
+/*
+* Takes a match_val and a struct
+* that represents a source string and its position
+* Returns the success of the match and
+* Modify the struct if successful
+*/
+typedef bool (*MatchFunction) (MatchSrc *, char *);
 
 struct Edge {
-    State *in_state;
+    State init;
+    State fin;
+    char *match_val;
     MatchFunction match_fn;
 };
 
-LIST_DECLARE(State *, StatePtrList);
+Edge new_edge(State init, State fin, char *match_val, MatchFunction match_fn);
+
+LIST_DECLARE(State, StateList);
 
 typedef struct {
-    StatePtrList *states;
-    StatePtrList *final_states;
-    State *initial;
+    StateList *states;
+    StateList *final_states;
+    EdgeList *transitions;
+    State initial;
 } NFA;

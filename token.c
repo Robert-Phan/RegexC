@@ -6,11 +6,10 @@ Token new_token(TokenType type, char *value) {
 
 LIST_DEFINE(Token, TokenList);
 
-void free_TokenList(TokenList *list) {
+void free_TokenList_full(TokenList *list) {
     for (int i = 0; i < list->n; i++) {
         free(list->array[i].value);
     }
 
-    free(list->array);
-    free(list);
+    free_TokenList(list);
 }

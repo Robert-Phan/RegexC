@@ -65,3 +65,8 @@ void Name##_add(Name *list, T el) {\
     list->array[list->n] = el;\
     list->n++;\
 }\
+\
+void free_##Name(Name *list) {\
+    free(list->array);\
+    free(list);\
+}\
