@@ -39,3 +39,5 @@ typedef struct {
     EdgeList *transitions;
     State initial;
 } NFA;
+
+NFA make_nfa(Expr *expr);

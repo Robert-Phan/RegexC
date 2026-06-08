@@ -135,7 +135,11 @@ static void scan_set(Scanner *sc)
 
     advance(sc);
 
-    add_token_custom(sc, is_negset ? NEGSET : SET, sc->start+1, sc->current-1);
+    add_token_custom(
+        sc, is_negset ? NEGSET : SET, 
+        sc->start + (is_negset ? 2 : 1), 
+        sc->current-1
+    );
 }
 
 static void scan_range(Scanner *sc)

@@ -3,9 +3,10 @@
 
 int main(int argc, char const *argv[])
 {
-    /* code */
-    TokenList *list = scan("[abc]ef|(ghi*)\\jklm{2,}");
+    // TokenList *list = scan("[^abc]\\def|ghi*|jk[Lm-o]+p{,6}");
+    TokenList *list = scan("[^abc]def|ghi|jk[Lm-o]\\p");
     Expr* tree = parse(list);
+    NFA nfa = make_nfa(tree);
 
     Token test;
     for (int i = 0; i < list->n; i++) {
