@@ -54,7 +54,7 @@ int process(NFA nfa, RegexStateList *stack, char *source)
     return match_at;
 }
 
-char *regex_match(NFA nfa, char *source)
+static char *regex_match(NFA nfa, char *source)
 {
     RegexStateList *stack = new_RegexStateList();
     int longest_match_at = -1;

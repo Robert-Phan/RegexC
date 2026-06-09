@@ -24,7 +24,7 @@ Edge new_edge(State init, State fin, char *match_val, MatchFunction match_fn)
 
 NFA make_nfa(Expr *expr);
 
-bool match_run(MatchSrc *match_src, char *val)
+static bool match_run(MatchSrc *match_src, char *val)
 {
     int val_len = strlen(val);
     char *source_at_pos = match_src->source + match_src->pos;
@@ -38,13 +38,13 @@ bool match_run(MatchSrc *match_src, char *val)
     return successful;
 }
 
-bool match_dot(MatchSrc *match_src, char *val)
+static bool match_dot(MatchSrc *match_src, char *val)
 {
     match_src->pos++;
     return true;
 }
 
-bool match_set(MatchSrc *match_src, char *val)
+static bool match_set(MatchSrc *match_src, char *val)
 {
     int val_len = strlen(val);
     char srcchr = *(match_src->source + match_src->pos);
@@ -80,7 +80,7 @@ bool match_set(MatchSrc *match_src, char *val)
     return false;
 }
 
-bool match_negset(MatchSrc *match_src, char *val)
+static bool match_negset(MatchSrc *match_src, char *val)
 {
     int val_len = strlen(val);
     char srcchr = *(match_src->source + match_src->pos);
