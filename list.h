@@ -16,6 +16,8 @@ int Name##_get(Name *list, int i, T *el); \
 \
 void Name##_add(Name *list, T el); \
 \
+T Name##_pop(Name *list); \
+\
 void free_##Name(Name *list);
 
 /* Used for defining code in source files */
@@ -66,7 +68,14 @@ void Name##_add(Name *list, T el) {\
     list->n++;\
 }\
 \
+T Name##_pop(Name *list) {\
+    T el = list->array[list->n-1];\
+    list->n--;\
+    return el;\
+}\
+\
 void free_##Name(Name *list) {\
     free(list->array);\
     free(list);\
 }\
+
