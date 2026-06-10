@@ -158,8 +158,92 @@ bool match_pipe(Expr *expr, MatchSrc *match_src)
     return left_result;
 }
 
+typedef struct
+{
+    int min;
+    int max
+} CharRange;
+
+CharRange parse_char_range(char *val)
+{
+    int comma_loc = 0;
+
+    while (val[comma_loc] != ',' && comma_loc < strlen(val))
+        comma_loc++;
+
+    // parse min
+    int min = 0;
+    if (comma_loc > 0)
+    {
+        char *min_str = malloc(comma_loc + 1);
+        memcpy(min_str, val, comma_loc);
+        min_str[comma_loc] = '\0';
+
+        min = atoi(min_str);
+        free(min_str);
+    }
+
+    // parse max
+    int max = -1;
+    if (comma_loc < (strlen(val) - 1))
+    {
+        char *max_str = val + comma_loc + 1;
+        max = atoi(max_str);
+    }
+
+    return (CharRange){min, max};
+}
+
+bool match_range(Expr *expr, MatchSrc *match_src, CharRange range)
+{
+    MatchSrc new_src = *match_src;
+    bool flag = true;
+
+    while (flag && range.max != 0) {
+        flag = match_dispatch(expr->left, &new_src);
+        range.max--;
+        range.min--;
+    }
+
+    bool result = range.min <= 0;
+
+    if (result)
+        *match_src = new_src;
+
+    return result;
+}
+
+bool match_quantifiers(Expr *expr, MatchSrc *match_src) {
+    CharRange range;
+
+    switch (expr->token.type)
+    {
+    case RANGE:
+        range = parse_char_range(expr->token.value);
+        break;
+    case PLUS:
+        range = (CharRange){1, -1};
+        break;
+    case QMARK:
+        range = (CharRange){0, 1};
+        break;
+    case STAR:
+        range = (CharRange){0, -1};
+        break;
+    
+    default:
+        break;
+    }
+
+    bool result = match_range(expr, match_src, range);
+    return result;
+}
+
 bool match_dispatch(Expr *expr, MatchSrc *match_src)
 {
+    if (match_src->pos >= strlen(match_src->source))
+        return false;
+
     MatchSrc new_src = *match_src;
     bool result;
 
@@ -180,6 +264,12 @@ bool match_dispatch(Expr *expr, MatchSrc *match_src)
         result = match_pipe(expr, &new_src);
         break;
 
+    case RANGE:
+    case QMARK:
+    case PLUS:
+    case STAR:
+        result = match_quantifiers(expr, &new_src);
+        break;
     default:
         break;
     }

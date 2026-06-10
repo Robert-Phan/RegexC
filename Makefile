@@ -2,7 +2,7 @@
 CC      := gcc
 DEBUG_FLAGS = -g -O0 -fsanitize=address
 RELEASE_FLAGS = -O2
-CFLAGS  := -Wall -Wextra -std=c11 
+CFLAGS  := -Wall -Wextra -std=gnu11 
 LDLIBS = -lm
 
 # Directories
