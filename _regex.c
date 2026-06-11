@@ -1,32 +1,65 @@
-#include "nfa.h"
+#include "_regex.h"
 #include <string.h>
 
-bool match_dispatch(Expr *expr, MatchSrc *match_src);
+LIST_DEFINE(MatchSrc, SrcList);
 
-bool match_run(Expr *expr, MatchSrc *match_src)
+void SrcList_addall(SrcList *dest, SrcList *ori)
+{
+    for (int i = 0; i < ori->n; i++)
+    {
+        MatchSrc src = ori->array[i];
+        SrcList_add(dest, src);
+    }
+}
+
+#define LOOP                          \
+    SrcList *results = new_SrcList(); \
+    MatchSrc src;                     \
+    for (int i = 0; i < srcs->n; i++) \
+    {                                 \
+        SrcList_get(srcs, i, &src);
+
+#define LOOP_END }
+
+SrcList *match_dispatch(Expr *expr, SrcList *srcs);
+
+// SrcList *match_run_one(Expr *expr, )
+
+SrcList *match_run(Expr *expr, SrcList *srcs)
 {
     char *val = expr->token.value;
     int val_len = strlen(val);
-    char *source_at_pos = match_src->source + match_src->pos;
-    bool successful = strncmp(source_at_pos, val, val_len) == 0;
 
-    if (successful)
-        match_src->pos += val_len;
+    LOOP char *src_at_pos = src.source + src.pos;
 
-    return successful;
+    bool successful = strncmp(src_at_pos, val, val_len) == 0;
+
+    if (!successful)
+        continue;
+
+    src.pos += val_len;
+    SrcList_add(results, src);
+
+    LOOP_END
+
+    return results;
 }
 
-bool match_dot(Expr *expr, MatchSrc *match_src)
+SrcList *match_dot(Expr *expr, SrcList *srcs)
 {
-    match_src->pos++;
-    return true;
+    LOOP
+        src.pos++;
+    SrcList_add(results, src);
+    LOOP_END
+
+    return results;
 }
 
-bool match_set(Expr *expr, MatchSrc *match_src)
+bool match_set_one(Expr *expr, MatchSrc *src)
 {
     char *val = expr->token.value;
     int val_len = strlen(val);
-    char srcchr = *(match_src->source + match_src->pos);
+    char srcchr = *(src->source + src->pos);
 
     for (int i = 0; i < val_len; i++)
     {
@@ -41,7 +74,7 @@ bool match_set(Expr *expr, MatchSrc *match_src)
             for (char j = val[i]; j <= val[i + 2]; j++)
                 if (srcchr == j)
                 {
-                    match_src->pos++;
+                    src->pos++;
                     return true;
                 }
 
@@ -52,7 +85,7 @@ bool match_set(Expr *expr, MatchSrc *match_src)
 
         if (srcchr == val[i])
         {
-            match_src->pos++;
+            src->pos++;
             return true;
         }
     }
@@ -60,11 +93,24 @@ bool match_set(Expr *expr, MatchSrc *match_src)
     return false;
 }
 
-bool match_negset(Expr *expr, MatchSrc *match_src)
+SrcList *match_set(Expr *expr, SrcList *srcs)
+{
+    LOOP
+
+        bool successful = match_set_one(expr, &src);
+
+    if (successful)
+        SrcList_add(results, src);
+    LOOP_END
+
+    return results;
+}
+
+bool match_negset_one(Expr *expr, MatchSrc *src)
 {
     char *val = expr->token.value;
     int val_len = strlen(val);
-    char srcchr = *(match_src->source + match_src->pos);
+    char srcchr = *(src->source + src->pos);
 
     for (int i = 0; i < val_len; i++)
     {
@@ -89,73 +135,70 @@ bool match_negset(Expr *expr, MatchSrc *match_src)
             return false;
     }
 
-    match_src->pos++;
+    src->pos++;
     return true;
 }
 
-bool match_primary(Expr *expr, MatchSrc *match_src)
+SrcList *match_negset(Expr *expr, SrcList *srcs)
 {
-    MatchSrc new_src = *match_src;
-    bool result;
+    LOOP
+
+        bool successful = match_negset_one(expr, &src);
+
+    if (successful)
+        SrcList_add(results, src);
+    LOOP_END
+
+    return results;
+}
+
+SrcList *match_primary(Expr *expr, SrcList *srcs)
+{
+    SrcList *results;
 
     switch (expr->token.type)
     {
     case RUN:
-        result = match_run(expr, &new_src);
+        results = match_run(expr, srcs);
         break;
     case DOT:
-        result = match_dot(expr, &new_src);
+        results = match_dot(expr, srcs);
         break;
     case SET:
-        result = match_set(expr, &new_src);
+        results = match_set(expr, srcs);
         break;
     case NEGSET:
-        result = match_negset(expr, &new_src);
+        results = match_negset(expr, srcs);
         break;
 
     default:
         break;
     }
 
-    *match_src = new_src;
-
-    return result;
+    return results;
 }
 
-bool match_concat(Expr *expr, MatchSrc *match_src)
+SrcList *match_concat(Expr *expr, SrcList *srcs)
 {
-    MatchSrc left_src = *match_src;
-    bool result = match_dispatch(expr->left, &left_src);
-
-    if (!result)
-        return false;
-
-    MatchSrc right_src = left_src;
-    result = match_dispatch(expr->right, &right_src);
-
-    if (result)
-        *match_src = right_src;
-
-    return result;
+    SrcList *srcs_after_left = match_dispatch(expr->left, srcs);
+    SrcList *results = match_dispatch(expr->right, srcs_after_left);
+    return results;
 }
 
-bool match_pipe(Expr *expr, MatchSrc *match_src)
+SrcList *match_pipe(Expr *expr, SrcList *srcs)
 {
-    MatchSrc left_src = *match_src;
-    MatchSrc right_src = *match_src;
+    SrcList *left_results = match_dispatch(expr->left, srcs);
+    SrcList *right_results = match_dispatch(expr->right, srcs);
 
-    bool left_result = match_dispatch(expr->left, &left_src);
-    bool right_result = match_dispatch(expr->right, &right_src);
+    SrcList *results = new_SrcList();
 
-    if (!left_result)
-    {
-        *match_src = right_src;
+    SrcList_addall(results, left_results);
+    SrcList_addall(results, right_results);
 
-        return right_result;
-    }
+    free(left_results);
+    free(right_results);
 
-    *match_src = left_src;
-    return left_result;
+    return results;
 }
 
 typedef struct
@@ -194,26 +237,30 @@ CharRange parse_char_range(char *val)
     return (CharRange){min, max};
 }
 
-bool match_range(Expr *expr, MatchSrc *match_src, CharRange range)
+SrcList *match_range(Expr *expr, SrcList *srcs, CharRange range)
 {
-    MatchSrc new_src = *match_src;
-    bool flag = true;
+    SrcList *results = new_SrcList();
+    SrcList *new_srcs = srcs;
 
-    while (flag && range.max != 0) {
-        flag = match_dispatch(expr->left, &new_src);
-        range.max--;
-        range.min--;
+    int min = range.min;
+    int max = range.max;
+
+    while (new_srcs->n > 0 && max != 0)
+    {
+        if (min <= 0)
+            SrcList_addall(results, new_srcs);
+
+        new_srcs = match_dispatch(expr->left, new_srcs);
+
+        max--;
+        min--;
     }
 
-    bool result = range.min <= 0;
-
-    if (result)
-        *match_src = new_src;
-
-    return result;
+    return results;
 }
 
-bool match_quantifiers(Expr *expr, MatchSrc *match_src) {
+SrcList *match_quantifiers(Expr *expr, SrcList *srcs)
+{
     CharRange range;
 
     switch (expr->token.type)
@@ -230,22 +277,62 @@ bool match_quantifiers(Expr *expr, MatchSrc *match_src) {
     case STAR:
         range = (CharRange){0, -1};
         break;
-    
+
     default:
         break;
     }
 
-    bool result = match_range(expr, match_src, range);
+    SrcList *result = match_range(expr, srcs, range);
     return result;
 }
 
-bool match_dispatch(Expr *expr, MatchSrc *match_src)
+void SrcList_uniques(SrcList **listptr)
 {
-    if (match_src->pos >= strlen(match_src->source))
-        return false;
+    SrcList *list = *listptr;
+    SrcList *results = new_SrcList();
 
-    MatchSrc new_src = *match_src;
-    bool result;
+    for (size_t i = 0; i < list->n; i++)
+    {
+        MatchSrc src = list->array[i];
+
+        bool skip = false;
+        for (size_t j = 0; j < results->n; j++)
+        {
+            MatchSrc existing = results->array[j];
+            if (src.pos == existing.pos)
+                skip = true;
+
+            if (skip)
+                continue;
+        }
+
+        if (skip)
+            continue;
+
+        SrcList_add(results, src);
+    }
+
+    *listptr = results;
+}
+
+void filter_ending_srcs(SrcList **srcsptr)
+{
+    SrcList *srcs = *srcsptr;
+
+    LOOP if (src.pos < strlen(src.source))
+        SrcList_add(results, src);
+    LOOP_END
+
+    *srcsptr = results;
+}
+
+SrcList *match_dispatch(Expr *expr, SrcList *srcs)
+{
+    SrcList_uniques(&srcs);
+
+    filter_ending_srcs(&srcs);
+
+    SrcList *results;
 
     switch (expr->token.type)
     {
@@ -253,46 +340,50 @@ bool match_dispatch(Expr *expr, MatchSrc *match_src)
     case DOT:
     case SET:
     case NEGSET:
-        /* code */
-        result = match_primary(expr, &new_src);
+        results = match_primary(expr, srcs);
         break;
 
     case CONCAT:
-        result = match_concat(expr, &new_src);
+        results = match_concat(expr, srcs);
         break;
     case PIPE:
-        result = match_pipe(expr, &new_src);
+        results = match_pipe(expr, srcs);
         break;
 
     case RANGE:
     case QMARK:
     case PLUS:
     case STAR:
-        result = match_quantifiers(expr, &new_src);
+        results = match_quantifiers(expr, srcs);
         break;
+
     default:
         break;
     }
 
-    if (result)
-        *match_src = new_src;
-
-    return result;
+    return results;
 }
 
 char *regex_match(Expr *expr, char *source)
 {
-    MatchSrc match_src = {source, 0};
+    SrcList *srcs = new_SrcList();
+    MatchSrc init_src = {source, 0};
+    SrcList_add(srcs, init_src);
 
-    bool successful = match_dispatch(expr, &match_src);
+    SrcList *results = match_dispatch(expr, srcs);
 
-    if (!successful)
-        return NULL;
+    int reslen = 0;
+    MatchSrc src;
+    for (size_t i = 0; i < results->n; i++)
+    {
+        SrcList_get(results, i, &src);
+        if (src.pos > reslen)
+            reslen = src.pos;
+    }
 
-    int len = match_src.pos;
-    char *result = malloc(len + 1);
-    memcpy(result, source, len);
-    result[len] = '\0';
+    char *resstr = malloc(reslen + 1);
+    memcpy(resstr, source, reslen);
+    resstr[reslen] = '\0';
 
-    return result;
+    return resstr;
 }
