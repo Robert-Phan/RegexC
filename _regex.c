@@ -3,15 +3,6 @@
 
 LIST_DEFINE(MatchSrc, SrcList);
 
-void SrcList_addall(SrcList *dest, SrcList *ori)
-{
-    for (int i = 0; i < ori->n; i++)
-    {
-        MatchSrc src = ori->array[i];
-        SrcList_add(dest, src);
-    }
-}
-
 #define LOOP                          \
     SrcList *results = new_SrcList(); \
     MatchSrc src;                     \
@@ -23,14 +14,14 @@ void SrcList_addall(SrcList *dest, SrcList *ori)
 
 SrcList *match_dispatch(Expr *expr, SrcList *srcs);
 
-// SrcList *match_run_one(Expr *expr, )
-
 SrcList *match_run(Expr *expr, SrcList *srcs)
 {
     char *val = expr->token.value;
     int val_len = strlen(val);
 
-    LOOP char *src_at_pos = src.source + src.pos;
+    LOOP;
+
+    char *src_at_pos = src.source + src.pos;
 
     bool successful = strncmp(src_at_pos, val, val_len) == 0;
 
@@ -47,9 +38,11 @@ SrcList *match_run(Expr *expr, SrcList *srcs)
 
 SrcList *match_dot(Expr *expr, SrcList *srcs)
 {
-    LOOP
-        src.pos++;
+    LOOP;
+
+    src.pos++;
     SrcList_add(results, src);
+
     LOOP_END
 
     return results;
@@ -95,9 +88,8 @@ bool match_set_one(Expr *expr, MatchSrc *src)
 
 SrcList *match_set(Expr *expr, SrcList *srcs)
 {
-    LOOP
-
-        bool successful = match_set_one(expr, &src);
+    LOOP;
+    bool successful = match_set_one(expr, &src);
 
     if (successful)
         SrcList_add(results, src);
@@ -182,6 +174,9 @@ SrcList *match_concat(Expr *expr, SrcList *srcs)
 {
     SrcList *srcs_after_left = match_dispatch(expr->left, srcs);
     SrcList *results = match_dispatch(expr->right, srcs_after_left);
+
+    free_SrcList(srcs_after_left);
+
     return results;
 }
 
@@ -195,8 +190,8 @@ SrcList *match_pipe(Expr *expr, SrcList *srcs)
     SrcList_addall(results, left_results);
     SrcList_addall(results, right_results);
 
-    free(left_results);
-    free(right_results);
+    free_SrcList(left_results);
+    free_SrcList(right_results);
 
     return results;
 }
@@ -240,7 +235,8 @@ CharRange parse_char_range(char *val)
 SrcList *match_range(Expr *expr, SrcList *srcs, CharRange range)
 {
     SrcList *results = new_SrcList();
-    SrcList *new_srcs = srcs;
+    SrcList *new_srcs = new_SrcList();
+    SrcList_addall(new_srcs, srcs);
 
     int min = range.min;
     int max = range.max;
@@ -250,12 +246,15 @@ SrcList *match_range(Expr *expr, SrcList *srcs, CharRange range)
         if (min <= 0)
             SrcList_addall(results, new_srcs);
 
+        SrcList *old_srcs = new_srcs;
         new_srcs = match_dispatch(expr->left, new_srcs);
+        free_SrcList(old_srcs);
 
         max--;
         min--;
     }
 
+    free_SrcList(new_srcs);
     return results;
 }
 
@@ -286,15 +285,9 @@ SrcList *match_quantifiers(Expr *expr, SrcList *srcs)
     return result;
 }
 
-void SrcList_uniques(SrcList **listptr)
+void SrcList_uniques(SrcList *srcs)
 {
-    SrcList *list = *listptr;
-    SrcList *results = new_SrcList();
-
-    for (size_t i = 0; i < list->n; i++)
-    {
-        MatchSrc src = list->array[i];
-
+    LOOP
         bool skip = false;
         for (size_t j = 0; j < results->n; j++)
         {
@@ -310,27 +303,30 @@ void SrcList_uniques(SrcList **listptr)
             continue;
 
         SrcList_add(results, src);
-    }
 
-    *listptr = results;
+    LOOP_END
+
+    SrcList_clear(srcs);
+    SrcList_addall(srcs, results);
+    free_SrcList(results);
 }
 
-void filter_ending_srcs(SrcList **srcsptr)
+void filter_ending_srcs(SrcList *srcs)
 {
-    SrcList *srcs = *srcsptr;
-
     LOOP if (src.pos < strlen(src.source))
         SrcList_add(results, src);
     LOOP_END
 
-    *srcsptr = results;
+    SrcList_clear(srcs);
+    SrcList_addall(srcs, results);
+    free_SrcList(results);
 }
 
 SrcList *match_dispatch(Expr *expr, SrcList *srcs)
 {
-    SrcList_uniques(&srcs);
+    SrcList_uniques(srcs);
 
-    filter_ending_srcs(&srcs);
+    filter_ending_srcs(srcs);
 
     SrcList *results;
 
@@ -364,8 +360,20 @@ SrcList *match_dispatch(Expr *expr, SrcList *srcs)
     return results;
 }
 
-char *regex_match(Expr *expr, char *source)
+Regex compile_regex(char *pattern) {
+    TokenList *tokens = scan(pattern);
+    Expr *tree = parse(tokens);
+
+    return (Regex){tokens, tree};
+}
+
+char *regex_match(Regex regex, char *source)
 {
+    Expr* expr = regex.tree;
+
+    if (expr == NULL)
+        return NULL;
+
     SrcList *srcs = new_SrcList();
     MatchSrc init_src = {source, 0};
     SrcList_add(srcs, init_src);
@@ -385,5 +393,14 @@ char *regex_match(Expr *expr, char *source)
     memcpy(resstr, source, reslen);
     resstr[reslen] = '\0';
 
+    free_SrcList(srcs);
+    free_SrcList(results);
+
     return resstr;
+}
+
+void free_regex(Regex regex) {
+    free_token_strs(regex.tokens);
+    free_TokenList(regex.tokens);
+    free_expr(regex.tree);
 }

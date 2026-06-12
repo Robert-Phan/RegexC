@@ -1,4 +1,5 @@
 #include <stdlib.h>
+#include <string.h>
 
 /* Used for declaring list identifiers in headers */
 
@@ -18,7 +19,11 @@ void Name##_add(Name *list, T el); \
 \
 T Name##_pop(Name *list); \
 \
-void free_##Name(Name *list);
+void free_##Name(Name *list);\
+\
+void Name##_clear(Name *list);\
+\
+void Name##_addall(Name *dest, Name *ori);\
 
 /* Used for defining code in source files */
 
@@ -77,5 +82,19 @@ T Name##_pop(Name *list) {\
 void free_##Name(Name *list) {\
     free(list->array);\
     free(list);\
+}\
+\
+void Name##_addall(Name *dest, Name *ori)\
+{\
+    for (int i = 0; i < ori->n; i++)\
+    {\
+        T el = ori->array[i];\
+        Name##_add(dest, el);\
+    }\
+}\
+\
+void Name##_clear(Name *list) {\
+    memset(list->array, 0, list->a_size * sizeof(T));\
+    list->n = 0;\
 }\
 

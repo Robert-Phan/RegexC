@@ -27,3 +27,7 @@ typedef struct {
 Token new_token(TokenType type, char *value);
 
 LIST_DECLARE(Token, TokenList);
+
+void free_TokenList_full(TokenList *list);
+
+void free_token_strs(TokenList *list);
