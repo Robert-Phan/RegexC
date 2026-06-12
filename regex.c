@@ -1,4 +1,4 @@
-#include "_regex.h"
+#include "regex.h"
 #include <string.h>
 
 LIST_DEFINE(MatchSrc, SrcList);
